@@ -46,13 +46,16 @@ class Board():
                 self.winner = move[2]
     def __getitem__(self, key):
         return self.tiles[key[0]][key[1]]
+    def __setitem__(self, key, item):
+        self.tiles[key[0]][key[1]] = item
+        return item
 
 
     """Eval method is the key part to the algorithm. 
     Scoring only takes place at terminal nodes, and provides 
     a score based upon whose turn it will be and how many 
     turns it will take to get to this game state."""
-    def eval(self,x,y,depth,team):
+    def eval(self,x,y,depth,team, mark_max=15):
         key = (x,y)
         score = 0
         for a,b in ADJ[key]:#a and b are the adjacent squares
@@ -60,10 +63,11 @@ class Board():
             if self[a] == self[b] and (not self[a] == EMPTY):
                 #team can win
                 if team == 'x':
-                    score += 15 - depth
+                    score += mark_max - depth
                 elif team == 'o':
-                    score += -15 + depth
+                    score += -(mark_max) + depth
         return score
+
     def is_empty(self, x, y):
         return self.tiles[x][y] == EMPTY
     def is_full(self):
@@ -99,6 +103,51 @@ class Board():
         elif self.winner == None:
             print('Nobody won! You both are just too good...')
             print()
+
+    """Return list of 18 integers, nine for x in order of TILES then nine for o,
+each value in the range [0, 1]. If x has a mark at a tile, then the value for that input neuron will be 1, otherwise 0, and the same for o
+First nine values are from supplied perspective, next nine are from other perspective"""
+    def export_for_nn(self, perspective):
+        if not (perspective == 'x' or perspective == 'o'):
+            raise 'Unknown perspective: ' + perspective
+
+        opponent_letter = {'x': 'o', 'o':'x'}[perspective]
+
+        inputs = []
+        my_value = {perspective: 1}
+        other_value = {'o': 1}
+        for tile in TILES:
+            inputs.append(my_value.get(self.tiles[tile[0]][tile[1]], 0))
+        for tile in TILES:
+            inputs.append(other_value.get(self.tiles[tile[0]][tile[1]], 0))
+        return inputs
+            
+    """Returns a float in range (0, 1) representing health of game board from supplied perspective. 0 = bad, 1 = good
+    """
+    def get_health(self, perspective):
+        total = 0
+        score = {perspective: 1}
+        #add one to score for every nonblocked pair of perspective pieces
+        #subtract one for the same of the other team
+        for tile in TILES:
+            for a,b in ADJ[tile]:
+                if (not self[tile] == EMPTY) and ((self[tile] == self[a]) or (self[tile] == self[b])) and ((self[a] == EMPTY) or (self[b] == EMPTY)):
+                    total += score.get(self[tile], -1)
+
+        #scoring
+        if total < -1:
+            print('<-1')
+            return 0.1
+        elif total < 0:
+            return 0.25
+        elif total == 0:
+            return 0.5
+        elif total > 1:
+            print('>1')
+            return 0.9
+        elif total > 0:
+            return 0.8
+
 
 """Used for debugging only: manually print out each
 row/column/diagonal line relative to a specific square
