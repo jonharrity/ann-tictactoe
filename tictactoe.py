@@ -136,17 +136,15 @@ First nine values are from supplied perspective, next nine are from other perspe
 
         #scoring
         if total < -1:
-            print('<-1')
             return 0.1
         elif total < 0:
             return 0.25
         elif total == 0:
             return 0.5
         elif total > 1:
-            print('>1')
             return 0.9
         elif total > 0:
-            return 0.8
+            return 0.75
 
 
 """Used for debugging only: manually print out each

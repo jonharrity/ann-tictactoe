@@ -131,7 +131,7 @@ def permute(data_set, first):
 
 #generate training data for "sets" number of games, with one player being random, one using minimax
 def get_training_data(sets):
-    print('creating %s sets of training data'%sets)
+    print('creating training data from  %s games'%sets)
     data = []
     for i in range(sets):
         board = Board()
@@ -141,9 +141,11 @@ def get_training_data(sets):
         nn_pov = ['o', 'x'][random.randint(0,1)]
         done = False
         while not done:
+            #only add data if its AI turn
             if turn == nn_pov:
-                data.append({'inputs':get_inputs_board(board)+[pov_def[nn_pov]], 'expected': [get_best_move(board, turn)]})
-            
+                data.append({'inputs':board.export_for_nn(ai_letter),
+                            'expected': [board.get_health(ai_letter)]})
+
             if turn == ai_letter: # minimax turn
                 move = get_max(board, None, 1, -1000, 1000, ai_letter)[0]
                 board.update((move[0], move[1], ai_letter))
