@@ -73,22 +73,29 @@ class NeuralNetwork:
             next_inputs = []
             for neuron in layer:
                 for i in range(len(inputs)):
-                    neuron.weights[i] += inputs[i] * neuron.delta * self.learning_rate * neuron.output
-                neuron.bias += neuron.delta * self.learning_rate
+                    neuron.weights[i] -= inputs[i] * neuron.delta * self.learning_rate * neuron.output
+                neuron.bias -= neuron.delta * self.learning_rate
                 next_inputs.append(neuron.output)
             inputs = next_inputs
 
     def train(self, dataset, epochs):
         print('training, learning rate = %s' % self.learning_rate)
+        count = 0
         for gen in range(epochs):
             error = 0
+            dataset.sort(key=lambda x:random.random())
             for training_set in dataset:
                 self.feed_forward(training_set['inputs'])
                 self.back_propogate(training_set['expected'])
                 self.update_weights(training_set['inputs'])
                 error += sum((self.layers[-1][i].delta)**2 for i in range(len(training_set['expected'])))
                # print('output %s for expected %s' % (self.layers[-1][0].output, training_set['expected']))
-            print('epoch %s: error is %s' % (str(gen), error))
+        #    print('epoch %s: error is %s' % (str(gen), error))
+            count += 1
+            if count == 1:
+                print('first epoch: error = %s' % str(error))
+            if count == epochs:
+                print('last epoch: error = %s' % str(error))
 
 
 def test_network(hidden_layers, sets=10, epochs=100):
@@ -193,8 +200,8 @@ def load_network():
 def get_network_move(network, board, pov):
     options = []
     for tile in board.get_empty_tiles():
-        network.feed_forward(board.export_for_nn())
-        options.append({'x':tile[0],'y':tile[1],'val': network.layers[-1][0]})
+        network.feed_forward(board.export_for_nn(pov))
+        options.append({'x':tile[0],'y':tile[1],'val': network.layers[-1][0].output})
     options.sort(key=lambda x: x['val'])
     return (options[-1]['x'], options[-1]['y'], pov)
 
