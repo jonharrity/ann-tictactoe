@@ -3,7 +3,6 @@ from math import *
 import random
 import pickle
 
-pov_def = {'x': 0.5, 'o': 0.75}
 
 class Neuron:
     def to_string(self):
@@ -88,16 +87,14 @@ class NeuralNetwork:
                 self.back_propogate(training_set['expected'])
                 self.update_weights(training_set['inputs'])
                 error += sum((self.layers[-1][i].delta)**2 for i in range(len(training_set['expected'])))
-                print('output %s for expected %s' % (self.layers[-1][0].output, training_set['expected']))
+               # print('output %s for expected %s' % (self.layers[-1][0].output, training_set['expected']))
             print('epoch %s: error is %s' % (str(gen), error))
 
 
 def test_network(hidden_layers, sets=10, epochs=100):
     data = get_training_data(sets)
-    network = NeuralNetwork([10,hidden_layers,1], 0.5)
-    print(network.to_string())
+    network = NeuralNetwork([18,hidden_layers,1], 0.5)
     network.train(data, epochs)
-    print(network.to_string())
 
 
 #INPUTS DEFINITION:
@@ -193,15 +190,13 @@ def load_network():
     file.close()
     return network
 
-
 def get_network_move(network, board, pov):
-    network.feed_forward(get_inputs_board(board) + [pov_def[pov]])
-    output = network.layers[-1][0].output
-    print('rouding output %s to %s' % (output, round(output)))
-    output = round(output)
-    x = output % 3
-    y = output // 3
-    return (x, y, pov)
+    options = []
+    for tile in board.get_empty_tiles():
+        network.feed_forward(board.export_for_nn())
+        options.append({'x':tile[0],'y':tile[1],'val': network.layers[-1][0]})
+    options.sort(key=lambda x: x['val'])
+    return (options[-1]['x'], options[-1]['y'], pov)
 
 def human_vs_nn():
     board = Board()
