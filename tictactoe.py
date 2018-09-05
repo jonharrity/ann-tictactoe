@@ -42,7 +42,7 @@ class Board():
         self.tiles[move[0]][move[1]] = move[2]
         key = (move[0],move[1])
         for line in ADJ[key]:
-            if self.tiles[line[0][0]][line[0][1]] == self.tiles[line[1][0]][line[1][1]] == move[2]:
+            if self[line[0]] == self[line[1]] == move[2]:
                 self.winner = move[2]
     def __getitem__(self, key):
         return self.tiles[key[0]][key[1]]
@@ -92,7 +92,7 @@ class Board():
             if not y == 2:
                 print('-----')
     def print_win_msg(self, human, ai):
-        if self.winner:
+        if self.winner == human:
             print('You won! Congratulations!!')
             self.print()
             print()
