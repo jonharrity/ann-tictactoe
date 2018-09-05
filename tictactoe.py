@@ -22,6 +22,7 @@ ADJ = { (0,0): [[(1,0),(2,0)], [(0,1),(0,2)], [(1,1),(2,2)]],
         (2,2): [[(0,2),(1,2)], [(2,0),(2,1)], [(0,0),(1,1)]] }
 TILES = ADJ.keys()
 MAX_DEPTH = 8
+MAX_SCORE = 10
 
 """Board is a container class for game states. Methods includes 
 the evaluation function for min/max, a deep clone method, method to print
@@ -55,7 +56,7 @@ class Board():
     Scoring only takes place at terminal nodes, and provides 
     a score based upon whose turn it will be and how many 
     turns it will take to get to this game state."""
-    def eval(self,x,y,depth,team, mark_max=15):
+    def eval(self,x,y,depth,team):
         key = (x,y)
         score = 0
         for a,b in ADJ[key]:#a and b are the adjacent squares
@@ -63,9 +64,9 @@ class Board():
             if self[a] == self[b] and (not self[a] == EMPTY):
                 #team can win
                 if team == 'x':
-                    score += mark_max - depth
+                    score += MAX_SCORE - depth
                 elif team == 'o':
-                    score += -(mark_max) + depth
+                    score += -(MAX_SCORE) + depth
         return score
 
     def is_empty(self, x, y):
@@ -125,7 +126,6 @@ First nine values are from supplied perspective, next nine are from other perspe
         return inputs
             
     """Returns a float in range (0, 1) representing health of game board from supplied perspective. 0 = bad, 1 = good
-    """
     def get_health(self, perspective):
         total = 0
         score = {perspective: 1}
@@ -147,6 +147,20 @@ First nine values are from supplied perspective, next nine are from other perspe
             return 0.9
         elif total > 0:
             return 0.75
+    """
+    def get_health(self, perspective):
+        #positive score means well for o
+        #negative score means well for x
+        turn_switch = {'x':'o','o':'x'}
+        my_score = get_max(self, None, 1, -1000, 1000, perspective)[1]
+        other_score = get_max(self,None,1,-1000,1000,turn_switch[perspective])[1]
+        avg = (my_score + other_score) / 2
+        #now avg is on scale (-SCORE_MAX, SCORE MAX) where lower score is good for x, positive score is good if you are o
+        #move scale to be (0, 1), with 0 is bad for you, 1 is good for you
+        score = (avg + MAX_SCORE) / (2 * MAX_SCORE)
+        if perspective == 'x': return 1 - score
+        elif perspective == 'o': return score
+        else: raise 'Unknown player %s' % perspective
 
 
 """Used for debugging only: manually print out each
