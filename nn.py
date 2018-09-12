@@ -136,32 +136,29 @@ def permute(data_set, first):
         for z in permute(first[0:i]+first[i+1:], first+n):
             yield z
 
-#generate training data for "sets" number of games, with one player being random, one using minimax
-def get_training_data(sets):
-    print('creating training data from  %s games'%sets)
+def get_training_data(board=None, current_player='x'):
     data = []
-    for i in range(sets):
-        board = Board()
-        turn_switch = {'o': 'x', 'x': 'o'}
-        turn = ['o', 'x'][random.randint(0,1)]
-        ai_letter = ['o', 'x'][random.randint(0,1)]
-        nn_pov = ['o', 'x'][random.randint(0,1)]
-        done = False
-        while not done:
-            #only add data if its AI turn
-            if turn == nn_pov:
-                data.append({'inputs':board.export_for_nn(ai_letter),
-                            'expected': [board.get_health(ai_letter)]})
+    turn_switch = {'x':'o','o':'x'}
 
-            if turn == ai_letter: # minimax turn
-                move = get_max(board, None, 1, -1000, 1000, ai_letter)[0]
-                board.update((move[0], move[1], ai_letter))
-            else:#random turn
-                board.update(get_random_move(board, turn))
-            turn = turn_switch[turn]
-            done = board.is_done()
-     
+    if board == None:
+        print('creating training data from all possible game states')
+        board = Board()
+    else:
+        if board.is_done():
+            return data
+
+
+    for tile in board.get_empty_tiles():
+        new_board = board.copy()
+        new_board.update((tile[0],tile[1],current_player))
+        data.append({'inputs':new_board.export_for_nn(current_player),'expected':new_board.get_health(current_player)})
+
+
+        data.extend(get_training_data(new_board, turn_switch[current_player]))
     return data
+
+                
+
 
 training_data_file = 'training_data'
 nn_file = 'network_save'

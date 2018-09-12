@@ -126,32 +126,25 @@ First nine values are from supplied perspective, next nine are from other perspe
         return inputs
             
     """Returns a float in range (0, 1) representing health of game board from supplied perspective. 0 = bad, 1 = good
-    def get_health(self, perspective):
-        total = 0
-        score = {perspective: 1}
-        #add one to score for every nonblocked pair of perspective pieces
-        #subtract one for the same of the other team
-        for tile in TILES:
-            for a,b in ADJ[tile]:
-                if (not self[tile] == EMPTY) and ((self[tile] == self[a]) or (self[tile] == self[b])) and ((self[a] == EMPTY) or (self[b] == EMPTY)):
-                    total += score.get(self[tile], -1)
-
-        #scoring
-        if total < -1:
-            return 0.1
-        elif total < 0:
-            return 0.25
-        elif total == 0:
-            return 0.5
-        elif total > 1:
-            return 0.9
-        elif total > 0:
-            return 0.75
     """
     def get_health(self, perspective):
         #positive score means well for o
         #negative score means well for x
+
         turn_switch = {'x':'o','o':'x'}
+
+        #base case if one player won
+        if self.is_done():
+            if self.winner == perspective:
+                return 1
+            elif self.winner == turn_switch[perspective]:
+                return 0
+            elif self.winner == None:
+                return 0.5#rate a tie as 0.5 on a (0, 1) scale
+            else:
+                self.print()
+                raise Exception('Unknown winner {%s} while evaluating health' % self.winner)
+        
         my_score = get_max(self, None, 1, -1000, 1000, perspective)[1]
         other_score = get_max(self,None,1,-1000,1000,turn_switch[perspective])[1]
         avg = (my_score + other_score) / 2
