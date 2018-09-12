@@ -16,6 +16,11 @@ class NeuralNetwork:
             parts.append('[%s]' % ', '.join(neuron.to_string() for neuron in layer))
         return 'Neural network with %s layers: %s' % (len(self.layers), '[%s]' % ', '.join(parts))
 
+    #only call after feed_forward, get array output of ANN
+    def get_output(self):
+        return [n.output for n in self.layers[-1]]
+        
+
     def feed_forward(self, inputs):
         for layer in self.layers:
             next_inputs = []
@@ -54,7 +59,7 @@ class NeuralNetwork:
     def transfer_derivative(self, x):
         return self.transfer(x) * (1-self.transfer(x))
     
-    def __init__(self, layer_counts, learning_rate):#initialize network with random weights and biases
+    def __init__(self, layer_counts, learning_rate=0.5):#initialize network with random weights and biases
         layers = []
         input_count = layer_counts[0]
         layer_counts = layer_counts[1:]
@@ -81,6 +86,13 @@ class NeuralNetwork:
             inputs = next_inputs
 
     def train(self, dataset, epochs):
+        if type(dataset) != type([]):
+            raise Exception('NeuralNetwork.train: dataset not an array')
+        if len(dataset) < 1:
+            raise Exception('NeuralNetwork.train: empty dataset provided')
+        if type(dataset[0]['expected']) != type([]):
+            raise Exception('NeuralNetwork.train: \'expected\' value is not an array')
+
         print('training, learning rate = %s' % self.learning_rate)
 
         for gen in range(epochs):
