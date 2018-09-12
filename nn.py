@@ -34,6 +34,7 @@ class NeuralNetwork:
                 next_inputs.append(neuron.output)
 
             inputs = next_inputs
+        return self.get_output()
 
     def back_propogate(self, expected):
         for i in range(len(expected)):#first find error of output layer
