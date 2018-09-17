@@ -3,10 +3,12 @@ from math import *
 import random
 import pickle
 
+random.seed(8080)
+
 
 class Neuron:
     def to_string(self):
-        return 'neuron with weights %s' % (self.weights)
+        return 'neuron with weights %s and bias %s' % (self.weights, self.bias)
     def __repr__(self):
         return self.to_string()
     def __init__(self, weights=None):
@@ -98,7 +100,13 @@ class NeuralNetwork:
         return 1-tanh(x)**2
     """
     def transfer(self, x):
-        return 1 / (1+exp(-x))
+        try:
+            return 1 / (1+exp(-x))
+        except:
+            print('math overflow for transfer(%s)'%x)
+            if x > 10: return 1
+            else: return 0
+
     def transfer_derivative(self, x):
         #return x * (1 - x)
         return self.transfer(x) * (self.transfer(-1*x))
@@ -166,18 +174,12 @@ class NeuralNetwork:
             #print('training dataset %s'%dataset)
             for training_set in dataset:
                 error = 0
-                count = 0
                 self.feed_forward(training_set['inputs'])
-                error += self.back_propogate(training_set['expected'], training_set['inputs'])
-                #self.update_weights(training_set['inputs'])
-                #error += sum((self.layers[-1][i].delta)**2 for i in range(len(training_set['expected'])))
-               # print('output %s for expected %s' % (self.layers[-1][0].output, training_set['expected']))
-        #    print('epoch %s: error is %s' % (str(gen), error))
-                count += 1
+                error = self.back_propogate(training_set['expected'], training_set['inputs'])
             if gen == 0:
-                print('first epoch: avg. error = %s' % str(error/count))
+                print('first epoch: error = %s' % str(error))
             if gen+1 == epochs:
-                print('last epoch: avg. error = %s' % str(error/count))
+                print('last epoch: error = %s' % str(error))
 
 
 def test_network(hidden_layers, sets=10, epochs=100):
@@ -326,13 +328,37 @@ def develop_network(epochs=500, hidden_layers=5):
 
 def get_xor_data():
     return [{'inputs':n[:2],'expected':[n[2]]} for n in [[0,0,0],[0,1,1],[1,0,1],[1,1,0]]]
-def print_bias(net):
-    data = [net.layers[0][0].bias, net.layers[0][1].bias,net.layers[1][0].bias]
-    print(data)
 
 
 if __name__ == '__main__':
     human_vs_nn()
+
+
+
+def get_training_data(sets):
+    print('creating training data from  %s games'%sets)
+    data = []
+    for i in range(sets):
+        board = Board()
+        turn_switch = {'o': 'x', 'x': 'o'}
+        turn = ['o', 'x'][random.randint(0,1)]
+        ai_letter = ['o', 'x'][random.randint(0,1)]
+        nn_pov = ['o', 'x'][random.randint(0,1)]
+        done = False
+        while not done:
+            #only add data if its AI turn
+            if turn == nn_pov:
+                data.append({'inputs':board.export_for_nn(ai_letter),
+                            'expected': [board.get_health(ai_letter)]})
+
+            if turn == ai_letter: # minimax turn
+                move = get_max(board, None, 1, -1000, 1000, ai_letter)[0]
+                board.update((move[0], move[1], ai_letter))
+            else:#random turn
+                board.update(get_random_move(board, turn))
+            turn = turn_switch[turn]
+            done = board.is_done()
+    return data
 
 
 
