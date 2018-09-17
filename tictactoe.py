@@ -113,16 +113,18 @@ First nine values are from supplied perspective, next nine are from other perspe
             raise 'Unknown perspective: ' + perspective
 
         opponent_letter = {'x': 'o', 'o':'x'}[perspective]
-        input_self = 0.9
-        input_other = 0.1
+        input_self = 1
+        input_empty = 0
+        input_other = -1
 
         inputs = []
-        my_value = {perspective: input_self}
-        other_value = {'o': input_self}
         for tile in TILES:
-            inputs.append(my_value.get(self[tile], input_other))
-        for tile in TILES:
-            inputs.append(other_value.get(self[tile], input_other))
+            if self[tile] == perspective:
+                inputs.append(input_self)
+            elif self[tile] == EMPTY:
+                inputs.append(input_empty)
+            else:
+                inputs.append(input_other)
         return inputs
             
     """Returns a float in range (0, 1) representing health of game board from supplied perspective. 0 = bad, 1 = good
