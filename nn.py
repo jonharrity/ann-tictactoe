@@ -205,7 +205,6 @@ def get_all_training_data(board=None, current_player='x'):
     turn_switch = {'x':'o','o':'x'}
 
     if board == None:
-        print('creating training data from all possible game states')
         board = Board()
     else:
         if board.is_done():
@@ -218,7 +217,7 @@ def get_all_training_data(board=None, current_player='x'):
         data.append({'inputs':new_board.export_for_nn(current_player),'expected':new_board.get_health(current_player)})
 
 
-        data.extend(get_training_data(new_board, turn_switch[current_player]))
+        data.extend(get_all_training_data(new_board, turn_switch[current_player]))
     return data
 
                 
@@ -319,8 +318,10 @@ if __name__ == '__main__':
 
 
 
+
+
+
 def get_training_data(sets):
-    print('creating training data from  %s games'%sets)
     data = []
     for i in range(sets):
         board = Board()
@@ -345,9 +346,48 @@ def get_training_data(sets):
     return data
 
 
+def train_cyclic_data(net=None):
+    if net == None:
+        net = NeuralNetwork([9,10,1])
+
+    error = 1
+    epoch = 0
+    while error > 0.0001:
+        epoch += 1
+        data = get_training_data(10)
+        for i in range(10):#epochs
+            total_error = 0
+            data.sort(key=lambda x:random.random())
+            for sample in data:
+                total_error += net.back_propogate(sample['expected'], sample['inputs'], True, 3)
+
+            error = total_error / len(data)
+            if error < 0.5:
+                print('epoch %s, error %s'%(epoch,error))
+
+        
+
+def learn_all_samples(training_data):
+    for sample in training_data:
+        pass
+
+
 def get_mm_move(board, player):
     resp = get_max(board,None,1,-1000,1000,player)
     return (resp[0][0], resp[0][1], player)
+
+def get_mm_probability(board, move, player):
+    count_options = len(list(board.get_empty_tiles()))#how many possible moves are there
+    return 1 - get_mm_rank(board,move,player) / count_options#higher the value, the more the mm likes the move
+
+def get_mm_rank(board, move, player, start_rank=1):
+    mm_move = get_mm_move(board, player)
+    if move == mm_move:
+        return start_rank
+    else:
+        new_board = board.copy()
+        new_board.update(mm_move[0],mm_move[1],'n')
+        return get_mm_rank(new_board, move, player, start_rank+1)
 
 def train_vs_nn(net=None, save_on_exit=True):
     if net == None:
@@ -360,8 +400,10 @@ def train_vs_nn(net=None, save_on_exit=True):
     turn_switch = {'o':'x','x':'o'}
     correct_count = 0
     incorrect_count = 0
+    pass_count = 0
     try:
-        while error > 0.0001:
+        while pass_count < 4:#get error < 0.0001 for 3 moves in a row to exit
+            
             epoch += 1
             board = Board()
             #pick either o or x 
@@ -383,14 +425,23 @@ def train_vs_nn(net=None, save_on_exit=True):
                     incorrect_count += 1
                     expected = correct_count / incorrect_count
 
+                #now use board.get_health for expected
+                #expected = board.get_health(current_move)
+
+                #now use rank that mm likes the move
+                expected = get_mm_probability(board, mm_move, current_move)
+
                 board.update(nn_move)
                 error = net.back_propogate([expected], board.export_for_nn(current_move), True, apply_rotations=3)
                 current_move = turn_switch[current_move]
                 del_error = error - prev_error
                 if error < 0.01:
-                    print('epoch %s, error %s' % (epoch, error))
-                    print('correct %s, incorrect %s' % (correct_count,incorrect_count))
+                    print('epoch %s\terror %s\trate %s' % (epoch, error, correct_count/(correct_count+incorrect_count)))
                     prev_error = error
+            if error < 0.0001:
+                pass_count += 1
+            else:
+                pass_count = 0
                     
     except KeyboardInterrupt:
         pass
