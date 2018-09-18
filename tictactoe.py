@@ -300,11 +300,11 @@ def play_game():
         if turn == 'x':
             print('Your turn. Current board:')
             board.print()
-            board.update(get_human_move(board))
+            board.update(get_human_move(board)+('x',))
         else:
             print('Computer move; board:')
             board.print()
-            move = get_max(board, None, 1, -1000, 1000)[0]
+            move = get_max(board, None, 1, -1000, 1000, 'o')[0]
             board.update((move[0],move[1],'o'))
             print('Computer moved to (%s, %s)'%(str(move[0]),str(move[1])))
         done = board.is_done()
@@ -312,7 +312,7 @@ def play_game():
         print()
     board.print()
     print()
-    board.print_win_msg()
+    board.print_win_msg('x', 'o')
 
 if __name__ == '__main__':
     print('Welcome to tic tac toe! You are playing against a computer using the minimax algorithm with alpha/beta pruning. You are \'x\'; the computer is \'o\'.\n')
