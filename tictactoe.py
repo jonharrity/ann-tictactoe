@@ -39,7 +39,12 @@ class Board():
         for i in TILES:
             if self[i] == EMPTY:
                 yield i
-    def update(self, move):# move (x, y, player)
+    def update(self, x, y=None, player=None):
+        if y == None and player == None:
+            move = x#compatability
+        else:
+            move = (x, y, player)
+
         self.tiles[move[0]][move[1]] = move[2]
         key = (move[0],move[1])
         for line in ADJ[key]:
@@ -56,7 +61,7 @@ class Board():
     Scoring only takes place at terminal nodes, and provides 
     a score based upon whose turn it will be and how many 
     turns it will take to get to this game state."""
-    def eval(self,x,y,depth,team):
+    def eval(self,x,y,depth,team,inc=MAX_SCORE):
         key = (x,y)
         score = 0
         for a,b in ADJ[key]:#a and b are the adjacent squares
@@ -64,10 +69,18 @@ class Board():
             if self[a] == self[b] and (not self[a] == EMPTY):
                 #team can win
                 if team == 'x':
-                    score += MAX_SCORE - depth
+                    score += inc - depth
                 elif team == 'o':
-                    score += -(MAX_SCORE) + depth
+                    score += -(inc) + depth
         return score
+
+    def eval_nn(self, x, y, team):
+        key = (x,y)
+        score = 0
+        for a,b in ADJ[key]:
+            if self[a] == self[b] and (not self[a] == EMPTY):
+                if self[a] == team:
+                    score += 1
 
     def is_empty(self, x, y):
         return self.tiles[x][y] == EMPTY
@@ -110,7 +123,7 @@ each value in the range [0, 1]. If x has a mark at a tile, then the value for th
 First nine values are from supplied perspective, next nine are from other perspective"""
     def export_for_nn(self, perspective):
         if not (perspective == 'x' or perspective == 'o'):
-            raise 'Unknown perspective: ' + perspective
+            raise Exception('Unknown perspective: ' + str(perspective))
 
         opponent_letter = {'x': 'o', 'o':'x'}[perspective]
         input_self = 1
@@ -157,6 +170,25 @@ First nine values are from supplied perspective, next nine are from other perspe
         elif perspective == 'o': return score
         else: raise 'Unknown player %s' % perspective
 
+def export_clockwise_rotation(prev_export):
+    if len(prev_export) != 9:
+        raise Exception('Cannot rotate board %s (not length 9)' % (prev_export))
+    rotation = {0:2,
+                1:5,
+                2:8,
+                3:1,
+                4:4,
+                5:7,
+                6:0,
+                7:3,
+                8:6}
+    new_export = [None for i in range(9)]
+    for i in range(9):
+        new_export[rotation[i]] = prev_export[i]
+    return new_export
+
+
+
 
 """Used for debugging only: manually print out each
 row/column/diagonal line relative to a specific square
@@ -179,8 +211,8 @@ def print_win_orientations():
         if input('q for quit: ') == 'q':
             break
 
-"""Ask the user where they want to move (wrapper for poll_user_move)
-including safe checking for invalid input"""
+    """Ask the user where they want to move (wrapper for poll_user_move)
+    including safe checking for invalid input"""
 def get_human_move(board):
     while 1:
         try:
@@ -197,15 +229,15 @@ def poll_user_move(board):
         y = int(input('Enter 0, 1, or 2 for y that is not yet taken: '))
     return (x,y)
 
-"""Used for testing results of the get_max function
-(debugging only)"""
+    """Used for testing results of the get_max function
+    (debugging only)"""
 def test_board(board):
     for square in board.get_empty_tiles():
         cp = board.copy()
         cp.update((square[0],square[1],'o'))
         val = get_min(cp,square,2)
         print('for %s, result is %s'%(str(square),str(val)))
-"""Used for testing results of the get_min function"""
+    """Used for testing results of the get_min function"""
 def test_min(board):
     for square in board.get_empty_tiles():
         cp = board.copy()
@@ -213,10 +245,10 @@ def test_min(board):
         val = get_max(cp,square,2)
         print('for %s, result is %s'%(str(square),str(val)))
 
-"""The max function of the minimax algorithm. Implementation
-uses a and b for alpha/beta pruning, calls the evaluation function
-at terminal nodes, and picks the best moves selecting from calls
-to the equivilant get_min function."""
+    """The max function of the minimax algorithm. Implementation
+    uses a and b for alpha/beta pruning, calls the evaluation function
+    at terminal nodes, and picks the best moves selecting from calls
+    to the equivilant get_min function."""
 team_switch = {'o':'x','x':'o'}
 def get_max(board, tile, depth, a, b, team):
     if depth == MAX_DEPTH or board.is_done():
@@ -236,8 +268,8 @@ def get_max(board, tile, depth, a, b, team):
             best = val
     return (best_square, best)
 
-"""The min function of the minimax algorithm. Counterpart to the
-get_max function."""
+    """The min function of the minimax algorithm. Counterpart to the
+    get_max function."""
 def get_min(board, tile, depth, a, b, team):
     if depth == MAX_DEPTH or board.is_done():
         return (tile, board.eval(tile[0],tile[1],depth,team))
@@ -257,8 +289,8 @@ def get_min(board, tile, depth, a, b, team):
     return (best_square, best)
 
 
-"""This is the "main" function of the program
-which is run at the program start."""
+    """This is the "main" function of the program
+    which is run at the program start."""
 def play_game():
     board = Board()
     turn_switch = {'x':'o', 'o':'x'}
