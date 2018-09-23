@@ -118,9 +118,16 @@ class NeuralNetwork:
         #return x * (1 - x)
         return self.transfer(x) * (self.transfer(-1*x))
 
+    def get_layer_counts(self):
+        layers = [len(self.layers[0][0].weights)]#find input layer size
+        for n in self.layers:
+            layers.append(len(n))
+        return layers
+
     def __init__(self, layer_counts, learning_rate=0.35):#initialize network with random weights and biases
         self.layers = []
         self.biases = []
+        self.layer_counts = layer_counts
         input_count = layer_counts[0]
         layer_counts = layer_counts[1:]
         for size in layer_counts:
@@ -190,8 +197,9 @@ def get_inputs_board(board):
 
 def get_random_move(board, turn):
     options = [n for n in board.get_empty_tiles()]
-    move = list(options[random.randint(0,len(options)-1)]) + [turn]
-    return move
+    options = list(board.get_empty_tiles())
+    pick = random.randint(0,len(options)-1)
+    return (options[pick][0],options[pick][1],turn)
 
 def permute(data_set, first):
     if len(data_set) == 1:
@@ -271,6 +279,11 @@ def get_network_move(network, board, pov):
     options.sort(key=lambda x: x['val'])
     #print('sorted options: %s'%(options))
     return (options[-1]['x'], options[-1]['y'], pov)
+
+def get_rand_move(board, pov):
+    options = list(board.get_empty_tiles())
+    return options[random.randint(0,len(options)-1)]
+
 
 def human_vs_nn(network=load_network()):
     board = Board()
@@ -367,20 +380,21 @@ def train_cyclic_data(net=None):
 
         
 
-def learn_all_samples(training_data):
-    for sample in training_data:
-        pass
-
-
 def get_mm_move(board, player):
     resp = get_max(board,None,1,-1000,1000,player)
     return (resp[0][0], resp[0][1], player)
 
 def get_mm_probability(board, move, player):
-    count_options = len(list(board.get_empty_tiles()))#how many possible moves are there
-    return 1 - get_mm_rank(board,move,player) / count_options#higher the value, the more the mm likes the move
+    count_options = len(list(board.get_empty_tiles()))
+    mm_rank = get_mm_rank(board,move,player, max_depth=count_options)
+    if mm_rank == 1:
+        return 1#best case
+    else:
+        if count_options == mm_rank:
+            return 0#worst case
+    return (mm_rank-1) / (count_options-1)#base base
 
-def get_mm_rank(board, move, player, start_rank=1):
+def get_mm_rank(board, move, player, start_rank=1, max_depth=9):
     mm_move = get_mm_move(board, player)
     if move == mm_move:
         return start_rank
@@ -393,7 +407,6 @@ def train_vs_nn(net=None, save_on_exit=True):
     if net == None:
         net = load_network()
 
-    prev_error = 1
     error = 1
     epoch = 0
     board_count = 0
@@ -401,6 +414,7 @@ def train_vs_nn(net=None, save_on_exit=True):
     correct_count = 0
     incorrect_count = 0
     pass_count = 0
+    init_learning_rate = net.learning_rate
     try:
         while pass_count < 4:#get error < 0.0001 for 3 moves in a row to exit
             
@@ -408,40 +422,44 @@ def train_vs_nn(net=None, save_on_exit=True):
             board = Board()
             #pick either o or x 
             current_move = list(turn_switch)[random.randint(0,1)]
-            first_move = current_move
             
             update_states = []
             update_results = []
             update_turn = []
+            turn = 0
             while not board.is_done():
-                board_count += 1
+                turn += 1
 
                 nn_move = get_network_move(net, board, current_move)
                 mm_move = get_mm_move(board, current_move)
                 if nn_move == mm_move:
-                    expected = 1
                     correct_count += 1
                 else:
                     incorrect_count += 1
-                    expected = correct_count / incorrect_count
 
                 #now use board.get_health for expected
                 #expected = board.get_health(current_move)
 
-                #now use rank that mm likes the move
-                expected = get_mm_probability(board, mm_move, current_move)
+                #rand_move = get_rand_move(board,current_move)
+                rand_move = get_random_move(board,current_move)
 
-                board.update(nn_move)
+                #now use rank that mm likes the most
+                expected = get_mm_probability(board, rand_move, current_move)
+
+
+                #but the move we use is random
+                board.update(rand_move)
+                #board.update(nn_move)
+
+                #net.learning_rate = init_learning_rate * (1+turn*0.1)
                 error = net.back_propogate([expected], board.export_for_nn(current_move), True, apply_rotations=3)
                 current_move = turn_switch[current_move]
-                del_error = error - prev_error
                 if error < 0.01:
                     print('epoch %s\terror %s\trate %s' % (epoch, error, correct_count/(correct_count+incorrect_count)))
-                    prev_error = error
-            if error < 0.0001:
-                pass_count += 1
-            else:
-                pass_count = 0
+                if error < 0.0001:
+                    pass_count += 1
+                else:
+                    pass_count = 0
                     
     except KeyboardInterrupt:
         pass

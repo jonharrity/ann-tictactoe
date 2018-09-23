@@ -48,7 +48,7 @@ class Board():
         self.tiles[move[0]][move[1]] = move[2]
         key = (move[0],move[1])
         for line in ADJ[key]:
-            if self[line[0]] == self[line[1]] == move[2]:
+            if self[line[0]] == self[line[1]] == move[2] and move[2] != 'n':
                 self.winner = move[2]
     def __getitem__(self, key):
         return self.tiles[key[0]][key[1]]
@@ -91,6 +91,7 @@ class Board():
     def is_done(self):
         try:
             if self.winner: return True
+            return False
         except:
             if self.is_full():
                 self.winner = None
